@@ -4,7 +4,7 @@ import shutil
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QComboBox, QListWidget, QPushButton, QFileDialog,
                              QMenuBar, QMessageBox, QInputDialog, QLabel,
-                             QGroupBox, QSizePolicy)
+                             QGroupBox, QSizePolicy, QMenu, QAction, QDesktopWidget)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
 from file_operations import get_subdirectories
@@ -14,7 +14,7 @@ class FileManagerUI(QMainWindow):
         super().__init__()
         self.base_path = ""
         self.last_left_path = ""
-        self.presets = self.load_presets()  # 确保在init_ui之前加载预设
+        self.presets = self.load_presets()
         self.init_ui()
         self.load_data()
 
@@ -30,6 +30,20 @@ class FileManagerUI(QMainWindow):
 
         self.setup_menu_bar()
         self.setup_main_layout()
+
+        self.center()  # 新增：居中显示窗口
+
+    def center(self):
+        # 获取屏幕几何信息
+        screen = QDesktopWidget().screenNumber(QDesktopWidget().cursor().pos())
+        center_point = QDesktopWidget().screenGeometry(screen).center()
+        
+        # 获取窗口几何信息
+        frame_geometry = self.frameGeometry()
+        
+        # 将窗口中心设置为屏幕中心
+        frame_geometry.moveCenter(center_point)
+        self.move(frame_geometry.topLeft())
 
     def set_icon(self):
         icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'anymm-x2yaz-001.ico')
@@ -101,6 +115,8 @@ class FileManagerUI(QMainWindow):
 
         self.preset_list = QListWidget()
         self.preset_list.itemClicked.connect(self.load_preset)
+        self.preset_list.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.preset_list.customContextMenuRequested.connect(self.show_preset_context_menu)
         layout.addWidget(self.preset_list)
 
         self.update_preset_list()
@@ -243,7 +259,7 @@ class FileManagerUI(QMainWindow):
                     pass
                 combo.currentIndexChanged.connect(lambda: self.on_combo_changed(self.base_path, combos, level))
                 
-                if level < len(combos) - 1 and combo.currentText():
+                if level < len(combos) - 1:
                     next_path = os.path.join(path, combo.currentText())
                     self.populate_combo(next_path, combos, level + 1)
         except Exception as e:
@@ -272,7 +288,7 @@ class FileManagerUI(QMainWindow):
             print(f"路径不存在: {selected_path}")
 
         if combos == self.source_combos:
-            self.save_last_path()  # 保存左侧路径的变化
+            self.save_last_path()  # 每次更改时保存左侧路径
 
     def save_preset(self):
         name, ok = QInputDialog.getText(self, '保存预设', '请输入预设名称:')
@@ -370,24 +386,26 @@ class FileManagerUI(QMainWindow):
             return {}
 
     def save_last_path(self):
+        left_path = self.get_selected_path(self.source_combos)
+        data = {
+            "base_path": self.base_path,
+            "last_left_path": left_path
+        }
         with open('last_path.json', 'w') as f:
-            json.dump({
-                'base_path': self.base_path,
-                'last_left_path': self.get_selected_path(self.source_combos)
-            }, f)
+            json.dump(data, f)
 
     def load_last_path(self):
         try:
             with open('last_path.json', 'r') as f:
                 data = json.load(f)
-                self.base_path = data.get('base_path', '')
-                self.last_left_path = data.get('last_left_path', self.base_path)
-        except FileNotFoundError:
-            self.base_path = ''
-            self.last_left_path = ''
+                self.base_path = data.get("base_path", "")
+                self.last_left_path = data.get("last_left_path", self.base_path)
+        except (FileNotFoundError, json.JSONDecodeError):
+            self.base_path = ""
+            self.last_left_path = ""
 
     def set_path_in_combos(self, combos, path):
-        if not path.startswith(self.base_path):
+        if not path or not path.startswith(self.base_path):
             return
         relative_path = os.path.relpath(path, self.base_path)
         parts = relative_path.split(os.sep)
@@ -407,3 +425,29 @@ class FileManagerUI(QMainWindow):
         
         select_base = file_menu.addAction("选择游戏数据文件夹")
         select_base.triggered.connect(self.select_base_folder)
+
+    def show_preset_context_menu(self, position):
+        item = self.preset_list.itemAt(position)
+        if item:
+            context_menu = QMenu(self)
+            delete_action = QAction("删除", self)
+            delete_action.triggered.connect(lambda: self.delete_preset(item))
+            context_menu.addAction(delete_action)
+            context_menu.exec_(self.preset_list.mapToGlobal(position))
+
+    def delete_preset(self, item):
+        preset_name = item.text()
+        reply = QMessageBox.question(self, '确认删除', 
+                                     f"确定要删除预设 '{preset_name}' 吗?",
+                                     QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if reply == QMessageBox.Yes:
+            if preset_name in self.presets:
+                del self.presets[preset_name]
+                self.save_presets()
+                self.update_preset_list()
+                QMessageBox.information(self, "成功", f"预设 '{preset_name}' 已删除")
+
+    def closeEvent(self, event):
+        # 在窗口关闭时保存左侧路径
+        self.save_last_path()
+        super().closeEvent(event)
