@@ -1,0 +1,20 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build Python Exe",
+            "type": "shell",
+            "command": "pyinstaller",
+            "args": [
+                "--onefile",
+                "--windowed",
+                "${workspaceFolder}/main.py"
+            ],
+            "group": "build",
+            "presentation": {
+                "reveal": "always"
+            },
+            "problemMatcher": []
+        }
+    ]
+}
