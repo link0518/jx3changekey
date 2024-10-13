@@ -4,9 +4,10 @@ import shutil
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QComboBox, QListWidget, QPushButton, QFileDialog,
                              QMenuBar, QMessageBox, QInputDialog, QLabel,
-                             QGroupBox, QSizePolicy, QMenu, QAction, QDesktopWidget)
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QIcon
+                             QGroupBox, QSizePolicy, QMenu, QAction, QDesktopWidget,
+                             QStyledItemDelegate, QApplication, QFrame)
+from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtGui import QIcon, QPalette, QColor, QFont
 from file_operations import get_subdirectories
 
 class FileManagerUI(QMainWindow):
@@ -20,7 +21,7 @@ class FileManagerUI(QMainWindow):
 
     def init_ui(self):
         self.setWindowTitle("剑网3改键工具 by咕涌")
-        self.setGeometry(100, 100, 800, 500)
+        self.setGeometry(100, 100, 900, 600)
         self.setStyleSheet(self.get_style_sheet())
         self.set_icon()
 
@@ -31,17 +32,12 @@ class FileManagerUI(QMainWindow):
         self.setup_menu_bar()
         self.setup_main_layout()
 
-        self.center()  # 新增：居中显示窗口
+        self.center()
 
     def center(self):
-        # 获取屏幕几何信息
         screen = QDesktopWidget().screenNumber(QDesktopWidget().cursor().pos())
         center_point = QDesktopWidget().screenGeometry(screen).center()
-        
-        # 获取窗口几何信息
         frame_geometry = self.frameGeometry()
-        
-        # 将窗口中心设置为屏幕中心
         frame_geometry.moveCenter(center_point)
         self.move(frame_geometry.topLeft())
 
@@ -56,20 +52,17 @@ class FileManagerUI(QMainWindow):
         main_layout = QHBoxLayout()
         self.layout.addLayout(main_layout)
         main_layout.setContentsMargins(10, 10, 10, 10)
+        main_layout.setSpacing(10)
 
         main_layout.addWidget(self.create_panel("源账号", is_source=True), 4)
-        main_layout.addWidget(self.create_vertical_line())
         main_layout.addWidget(self.create_panel("目标账号", is_source=False), 4)
-        main_layout.addWidget(self.create_vertical_line())
         main_layout.addWidget(self.create_preset_panel(), 2)
-
-        main_layout.setSpacing(5)
 
     def create_panel(self, title, is_source):
         group_box = QGroupBox(title)
         layout = QVBoxLayout(group_box)
-        layout.setSpacing(15)
-        layout.setContentsMargins(15, 25, 15, 15)
+        layout.setSpacing(15)  # 增加间距
+        layout.setContentsMargins(15, 25, 15, 15)  # 增加边距
 
         combos = []
         for label_text in ["账号", "大区", "区服", "角色"]:
@@ -80,8 +73,7 @@ class FileManagerUI(QMainWindow):
         layout.addStretch(1)
 
         button = QPushButton("保存预设" if is_source else "点击改键")
-        button.setFixedHeight(40)
-        button.setStyleSheet("font-size: 14px; font-weight: bold;")
+        button.setFixedHeight(40)  # 增加按钮高度
         button.clicked.connect(self.save_preset if is_source else self.change_key)
         layout.addWidget(button)
 
@@ -95,13 +87,11 @@ class FileManagerUI(QMainWindow):
     def create_combo(self, label_text):
         layout = QVBoxLayout()
         label = QLabel(label_text)
-        label.setStyleSheet("font-size: 14px; font-weight: bold; color: #333333;")
         layout.addWidget(label)
 
         combo = QComboBox()
-        combo.setStyleSheet("font-size: 13px; padding: 5px;")
         combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        combo.setFixedHeight(35)
+        combo.setFixedHeight(35)  # 增加下拉框高度
         layout.addWidget(combo)
 
         widget = QWidget()
@@ -111,7 +101,8 @@ class FileManagerUI(QMainWindow):
     def create_preset_panel(self):
         group_box = QGroupBox("预设配置")
         layout = QVBoxLayout(group_box)
-        layout.setSpacing(5)
+        layout.setSpacing(10)
+        layout.setContentsMargins(10, 20, 10, 10)
 
         self.preset_list = QListWidget()
         self.preset_list.itemClicked.connect(self.load_preset)
@@ -122,72 +113,112 @@ class FileManagerUI(QMainWindow):
         self.update_preset_list()
         return group_box
 
-    def create_vertical_line(self):
-        from PyQt5.QtWidgets import QFrame
-        line = QFrame()
-        line.setFrameShape(QFrame.VLine)
-        line.setFrameShadow(QFrame.Sunken)
-        return line
-
     def get_style_sheet(self):
         return """
         QMainWindow {
-            background-color: #F0F0F0;
+            background-color: #f9f9f9;
         }
         QGroupBox {
             font-size: 16px;
             font-weight: bold;
-            border: 2px solid #0078D7;
-            border-radius: 6px;
-            margin-top: 8px;
-            padding-top: 16px;
+            border: 1px solid #d1d1d1;
+            border-radius: 8px;
+            margin-top: 12px;
+            background-color: #ffffff;
+            color: #202020;
+            padding: 10px;
         }
         QGroupBox::title {
             subcontrol-origin: margin;
-            subcontrol-position: top center;
+            left: 12px;
             padding: 0 5px;
-            color: #0078D7;
         }
         QLabel {
             font-size: 14px;
-            color: #333333;
-            font-weight: bold;
-            margin-bottom: 3px;
+            color: #202020;
+            font-weight: normal;
+            margin-bottom: 4px;
         }
         QComboBox {
-            background-color: white;
-            border: 1px solid #AAAAAA;
+            background-color: #ffffff;
+            border: 1px solid #d1d1d1;
             border-radius: 4px;
             padding: 5px 10px;
-            font-size: 13px;
-            min-height: 30px;
+            font-size: 14px;
+            color: #202020;
+            min-height: 32px;
+        }
+        QComboBox:hover {
+            border-color: #0067c0;
         }
         QComboBox::drop-down {
             subcontrol-origin: padding;
             subcontrol-position: top right;
             width: 25px;
-            border-left-width: 1px;
-            border-left-color: #AAAAAA;
-            border-left-style: solid;
+            border-left-width: 0px;
+            border-top-right-radius: 4px;
+            border-bottom-right-radius: 4px;
+        }
+        QComboBox::down-arrow {
+            image: url(down_arrow.png);
+            width: 12px;
+            height: 12px;
         }
         QPushButton {
-            background-color: #0078D7;
+            background-color: #0067c0;
             color: white;
             border: none;
             border-radius: 4px;
-            padding: 10px 15px;
+            padding: 8px 16px;
             font-size: 14px;
             font-weight: bold;
+            min-height: 36px;
         }
         QPushButton:hover {
-            background-color: #005A9E;
+            background-color: #0078d4;
+        }
+        QPushButton:pressed {
+            background-color: #005a9e;
         }
         QListWidget {
-            background-color: white;
-            border: 1px solid #AAAAAA;
+            background-color: #ffffff;
+            border: 1px solid #d1d1d1;
             border-radius: 4px;
-            font-size: 13px;
-            padding: 5px;
+            font-size: 14px;
+            padding: 4px;
+        }
+        QListWidget::item {
+            height: 32px;
+            padding-left: 8px;
+            color: #202020;
+        }
+        QListWidget::item:selected {
+            background-color: #e6f2ff;
+            color: #202020;
+        }
+        QListWidget::item:hover {
+            background-color: #f0f0f0;
+        }
+        QMenuBar {
+            background-color: #ffffff;
+            border-bottom: 1px solid #d1d1d1;
+        }
+        QMenuBar::item {
+            padding: 8px 12px;
+            background-color: transparent;
+        }
+        QMenuBar::item:selected {
+            background-color: #e6f2ff;
+        }
+        QMenu {
+            background-color: #ffffff;
+            border: 1px solid #d1d1d1;
+        }
+        QMenu::item {
+            padding: 8px 20px;
+        }
+        QMenu::item:selected {
+            background-color: #e6f2ff;
         }
         """
 
@@ -451,3 +482,11 @@ class FileManagerUI(QMainWindow):
         # 在窗口关闭时保存左侧路径
         self.save_last_path()
         super().closeEvent(event)
+
+if __name__ == "__main__":
+    app = QApplication([])
+    app.setFont(QFont("Segoe UI", 10))
+    app.setStyle("Fusion")  # 使用 Fusion 风格以获得更一致的外观
+    window = FileManagerUI()
+    window.show()
+    app.exec_()
