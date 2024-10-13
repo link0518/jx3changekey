@@ -16,6 +16,7 @@ class FileManagerUI(QMainWindow):
         self.base_path = ""
         self.last_left_path = ""
         self.presets = self.load_presets()
+        self.subdirs_cache = {}  # 添加缓存
         self.init_ui()
         self.load_data()
 
@@ -278,21 +279,20 @@ class FileManagerUI(QMainWindow):
             return
 
         try:
-            subdirs = get_subdirectories(path)
-            if subdirs:
-                combo = combos[level].findChild(QComboBox)
-                combo.clear()
-                combo.addItems(subdirs)
-                
-                try:
-                    combo.currentIndexChanged.disconnect()
-                except TypeError:
-                    pass
-                combo.currentIndexChanged.connect(lambda: self.on_combo_changed(self.base_path, combos, level))
-                
-                if level < len(combos) - 1:
-                    next_path = os.path.join(path, combo.currentText())
-                    self.populate_combo(next_path, combos, level + 1)
+            subdirs = get_subdirectories(path, self.subdirs_cache)
+            combo = combos[level].findChild(QComboBox)
+            combo.clear()
+            combo.addItems(subdirs)
+            
+            try:
+                combo.currentIndexChanged.disconnect()
+            except TypeError:
+                pass
+            combo.currentIndexChanged.connect(lambda: self.on_combo_changed(self.base_path, combos, level))
+            
+            if level < len(combos) - 1 and subdirs:
+                next_path = os.path.join(path, subdirs[0])
+                self.populate_combo(next_path, combos, level + 1)
         except Exception as e:
             print(f"在填充下拉框时发生错误: {e}")
 
